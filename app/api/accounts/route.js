@@ -127,14 +127,14 @@ async function fetchStudents(){
     }
 }
 
-// export async function GET() {
-//     try {
-//         const connection = await createConnection();
-//         const [rows] = await connection.query('SELECT * FROM users');
-//         connection.release();
-//         return NextResponse.json(rows);
-//     } catch (error) {
-//         console.error("Error fetching users:", error);
-//         return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
-//     }
-// }
+export async function GET() {
+    try {
+        const connection = await createConnection();
+        const [rows] = await connection.query('SELECT * FROM users');
+        connection.release();
+        return NextResponse.json(rows);
+    } catch (error) {
+        console.error("Error fetching users:", error);
+        return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
+    }
+}
