@@ -65,7 +65,7 @@ const CreateAccountPage = () => {
                     type="password"
                     name="password"
                     placeholder="Password"
-                    required={true}
+                    // required={true}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)} // Handle input change
                 />

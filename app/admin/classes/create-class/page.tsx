@@ -100,7 +100,7 @@ export default function ClassesPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'create-classes',
+          action: 'create-class',
           ...formData,
           students: selectedStudents
         })

@@ -31,6 +31,8 @@ export async function POST(req) {
             return await updateSection(body);
         case 'delete-section':
             return await deleteSection(body);
+        case 'add-students':
+            return await addStudents(body);
         default:
             return NextResponse.json({message: 'Action not defined'});
     }
@@ -64,28 +66,60 @@ export async function getSectionById(body){
 }
 
 export async function createSection(body){
-    const { section_name } = body
+    const { section_name, students } = body
+
+
     if(!section_name){
         return NextResponse.json({error: "Please enter section name"}, {status: 400})
     }
     const connection = await createConnection()
     try{
-        const [subjects] = await connection.query(
-            'SELECT * FROM sections WHERE section_name = ?',
-            [section_name]
+        await connection.beginTransaction()
+
+        const [sy_id] = await connection.query(
+            'SELECT id FROM academic_year ORDER BY id DESC LIMIT 1'
         )
 
-        if(subjects.length > 0){
-            return NextResponse.json({message: 'Section Already Exists!'})
+        const [sections] = await connection.query(
+            'SELECT * FROM section_students ss JOIN sections s ON s.section_id = ss.section_id WHERE section_name = ? AND school_year_id = ?',
+            [section_name, sy_id[0].id]
+        )
+
+        if(sections.length > 0){
+            return NextResponse.json({error: 'Section already exist!'}, {status: 400})
+        }
+        
+
+        let sectionId = sections.lenght > 0 ? sections[0].section_id : null
+
+        if(!sectionId){
+            const [insertedSection] = await connection.query(
+                'INSERT INTO sections (section_name) VALUES (?)',
+                [section_name]
+            )
+            sectionId = insertedSection.insertId
+        }
+        
+        if(!sectionId){
+            connection.rollback()
+            return NextResponse.json({error: 'Error inserting section'}, {status: 400})
         }
 
-        await connection.query(
-            'INSERT INTO sections (section_name) VALUES (?)',
-            [section_name]
-        )
+
+        if(Array.isArray(students) || students.length >= 1){
+            const studentRows = students.map(user_id => [sectionId, user_id, sy_id[0].id])
+            await connection.query(
+                'INSERT INTO section_students (section_id, user_id, school_year_id) VALUES ?',
+                [studentRows]
+            )
+        }
+
+        await connection.commit()
+
         return NextResponse.json({message: 'Successfully Added New Section!', status: 200})
     }catch(error){
         console.error("Error inserting subject:", error);
+        await connection.rollback()
         return NextResponse.json({ error: "Internal server error" }, { status: 500 })
     }finally{
         await connection.release()
@@ -134,9 +168,31 @@ export async function updateSection(body){
         }
         return NextResponse.json({message: "Section Updated Successfully!"})
     }catch(error){
+        console.error("Error updating section:", error);
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    }finally{
+        await connection.release()
+    }
+}
+
+export async function addStudents(body){
+    const { section_id, student_ids } = body
+
+    if(!section_id){
+        return NextResponse.json({ error: 'section_id is required'}, {status: 200})
+    }
+
+    const connection = await createConnection()
+    try{
+        
+        
+
+        return NextResponse.json({message: "Section Updated Successfully!"})
+    }catch(error){
         console.error("Error deleting section:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 })
     }finally{
         await connection.release()
     }
 }
+

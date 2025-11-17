@@ -28,7 +28,7 @@ export async function POST(req){
     }
 
     switch(body.action){
-        case 'create-classes': return await createClasses(body);
+        case 'create-class': return await createClasses(body);
         case 'get-specific-class': return await getSpecificClass(body);
         default: return NextResponse.json({message: 'Action not defined'});
     }
@@ -76,12 +76,12 @@ async function getSpecificClass(body){
 
 async function createClasses(body){
     const {subject_id, teacher_id, section_id, class_code, description} = body
-    const {start_date, end_date, start_time, end_time} = body
-    const {students} = body
+    const {schedule} = body
 
     const connection = await createConnection()
     await connection.beginTransaction()
     try{
+        
         const [createClass] = await connection.query(
             'INSERT INTO classes (subject_id, section_id, teacher_id, class_code, description) VALUES (?,?,?,?,?)',
             [subject_id, section_id, teacher_id, class_code, description]
@@ -93,25 +93,30 @@ async function createClasses(body){
             connection.rollback()
             return NextResponse.json({error: 'Error inserting class'}, {status: 400})
         }
+        
+        
+        if(schedule && typeof schedule === "object"){
+            const scheduleRows = []
 
+            for (const day of Object.keys(schedule)){
+                const item = schedule[day];
 
-        const [createSchedule] = await connection.query(
-            'INSERT INTO schedules (class_id, start_date, end_date, start_time, end_time) VALUES (?,?,?,?,?)',
-            [classID, start_date, end_date, start_time, end_time]
-        )
+                if(!item.start_time || !item.end_time) continue;
 
-        if(!createSchedule.insertId){
-            connection.rollback()
-            return NextResponse.json({error: 'Error inserting schedule'}, {status: 400})
-        }
+                scheduleRows.push([
+                    classID,
+                    day.toLowerCase(),
+                    item.start_time,
+                    item.end_time
+                ])
+            }
 
-
-        if(Array.isArray(students) || students.length >= 1){
-            const studentRows = students.map(user_id => [classID, user_id])
-            await connection.query(
-                'INSERT INTO class_students (class_id, user_id) VALUES ?',
-                [studentRows]
-            )
+            if(scheduleRows.length > 0){
+                await connection.query(
+                    'INSERT INTO schedules (class_id, day, start_time, end_time) VALUES ?',
+                    [scheduleRows]
+                )
+            }
         }
 
         await connection.commit()

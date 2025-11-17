@@ -15,7 +15,7 @@ export async function POST(req) {
     if (missingFields) {
         return NextResponse.json(
             { error: `Missing required fields: ${missingFields.join(', ')}` },
-            { status: 400 }  // Bad Request
+            { status: 401 }  // Bad Request
         );
     }
 
@@ -32,7 +32,7 @@ export async function POST(req) {
         // Check if the user was found
         const fetchedUser = rows[0];
         if (!fetchedUser) {
-            return NextResponse.json({ error: "User not found" }, { status: 404 });
+            return NextResponse.json({ error: "User not found" }, { status: 401 });
         }
 
         // Compare password
